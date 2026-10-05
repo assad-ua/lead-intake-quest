@@ -1,6 +1,6 @@
 # directive.md — Final directive: reliable CRM writes in the lead-intake flow
 
-> Repository: **https://github.com/assad-ua/lead-intake-quest** (private; reviewer access granted). 
+> Repository: **https://github.com/assad-ua/lead-intake-quest** (public). 
 > Developed from [`intent.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/intent.md). The version the agent first worked from is [`docs/directive_v1.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/docs/directive_v1.md).
 
 ## 1. Objective

@@ -1,7 +1,7 @@
 # directive.md — Final directive: reliable CRM writes in the lead-intake flow
 
-> Repository: **[REPO_URL]** (private; reviewer access granted). All links below are relative to the repo root.
-> Developed from [`intent.md`](intent.md). The version the agent first worked from is [`docs/directive_v1.md`](docs/directive_v1.md).
+> Repository: **https://github.com/assad-ua/lead-intake-quest** (private; reviewer access granted). 
+> Developed from [`intent.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/intent.md). The version the agent first worked from is [`docs/directive_v1.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/docs/directive_v1.md).
 
 ## 1. Objective
 
@@ -10,9 +10,9 @@ One website form submission must create **at most one** CRM contact, permanent C
 ## 2. Context
 
 - Synthetic FastAPI service, one flow: `POST /leads` → score → `CRMClient.push_lead()` → CRM.
-- CRM is an in-process fake ([`app/fake_crm.py`](app/fake_crm.py)) driven by outcome scripts; it honours `Idempotency-Key`.
+- CRM is an in-process fake ([`app/fake_crm.py`](https://github.com/assad-ua/lead-intake-quest/blob/main/app/fake_crm.py)) driven by outcome scripts; it honours `Idempotency-Key`.
 - Three deliberate, labelled defects: `DEFECT-1` retries (target), `DEFECT-2` duplicated scoring, `DEFECT-3` no validation.
-- Baseline: [`results/baseline.json`](results/baseline.json).
+- Baseline: [`results/baseline.json`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/baseline.json).
 
 ## 3. Quality yardstick
 
@@ -45,7 +45,7 @@ A change to this flow is acceptable when:
 - [x] New retry tests fail on baseline code.
 - [x] Batch: 0 duplicates. `crm_rejects_400`: 1 request, 0 s wait. `crm_down_500`: 3 requests, 0.6 s.
 - [x] Decision record, review record, handoff note committed.
-- [ ] Human handoff run recorded (see Appendix A.6).
+- [x] Human handoff run recorded (see Appendix A.6) — by me, not a second engineer.
 
 ## 7. Roles and review
 
@@ -60,16 +60,16 @@ A change to this flow is acceptable when:
 
 | Artifact | Link |
 |---|---|
-| Runnable repo | [REPO_URL] (also attached as `lead-intake-quest.zip`) |
-| Focused diff: baseline → final | [`results/fix.diff`](results/fix.diff) (`app/crm_client.py`, `app/main.py`) |
-| Review corrections diff | [`results/review_corrections.diff`](results/review_corrections.diff) |
-| Code review example | [`docs/code_review.md`](docs/code_review.md) |
-| Decision record | [`docs/decision_record.md`](docs/decision_record.md) |
-| Review checklist | [`docs/review_checklist.md`](docs/review_checklist.md) |
-| Handoff note + exercise | [`docs/handoff.md`](docs/handoff.md) |
-| Tests | [`tests/`](tests/) — result in [`results/pytest_after.txt`](results/pytest_after.txt) |
-| New tests vs baseline | [`results/new_tests_vs_baseline.txt`](results/new_tests_vs_baseline.txt) |
-| Measurements | [`results/baseline.json`](results/baseline.json), [`results/after.json`](results/after.json), script [`scripts/measure.py`](scripts/measure.py) |
+| Runnable repo | https://github.com/assad-ua/lead-intake-quest |
+| Focused diff: baseline → final | [`results/fix.diff`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/fix.diff) (`app/crm_client.py`, `app/main.py`) |
+| Review corrections diff | [`results/review_corrections.diff`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/review_corrections.diff) |
+| Code review example | [`docs/code_review.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/docs/code_review.md) |
+| Decision record | [`docs/decision_record.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/docs/decision_record.md) |
+| Review checklist | [`docs/review_checklist.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/docs/review_checklist.md) |
+| Handoff note + exercise | [`docs/handoff.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/docs/handoff.md) |
+| Tests | [`tests/`](https://github.com/assad-ua/lead-intake-quest/tree/main/tests) — result in [`results/pytest_after.txt`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/pytest_after.txt) |
+| New tests vs baseline | [`results/new_tests_vs_baseline.txt`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/new_tests_vs_baseline.txt) |
+| Measurements | [`results/baseline.json`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/baseline.json), [`results/after.json`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/after.json), script [`scripts/measure.py`](https://github.com/assad-ua/lead-intake-quest/blob/main/scripts/measure.py) |
 
 Commit history (`git log --oneline`) shows the order: baseline → intent + directive v1 → agent fix → fake CRM tweak → review docs → review corrections.
 
@@ -112,22 +112,22 @@ Unchanged on purpose (non-goals): scoring drift 16/24 inputs; invalid emails acc
 
 ## A.4 Checks
 
-- `pytest`: **15 passed** ([`results/pytest_after.txt`](results/pytest_after.txt)).
-- Agent's retry tests run against baseline code: **9 of 10 fail on behaviour**; the one passing is a guard expected to pass on both ([`results/new_tests_vs_baseline.txt`](results/new_tests_vs_baseline.txt)).
+- `pytest`: **15 passed** ([`results/pytest_after.txt`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/pytest_after.txt)).
+- Agent's retry tests run against baseline code: **9 of 10 fail on behaviour**; the one passing is a guard expected to pass on both ([`results/new_tests_vs_baseline.txt`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/new_tests_vs_baseline.txt)).
 
 ## A.5 AI contribution and corrections
 
 - **AI (Claude) wrote:** the synthetic service and its deliberate defects, the measurement script, the fix in commit `e168641`, the tests, and first drafts of all docs including this one.
-- **AI self-review flagged two risks** (R1, R2 in [`docs/code_review.md`](docs/code_review.md)). I read the diff and decided:
+- **AI self-review flagged two risks** (R1, R2 in [`docs/code_review.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/docs/code_review.md)). I read the diff and decided:
   - **R1 rejected:** the agent retried 429 with a 0.2/0.4 s backoff, ignoring `Retry-After`. Risk: against a real rate limit, quick retries burn quota and fail anyway, and the fake hid this because it returns 429 then ok. 429 now fails on attempt 1. Cost accepted: brief rate limits now return 502.
   - **R2 corrected:** the agent silently generated a key inside `push_lead`. Risk: a future queue that calls `push_lead` again would get a new key each time and bring duplicates back without warning. Key is now required and created per request.
 - **Agent self-correction during handoff:** its first handoff attempt failed because the fake CRM only knew fixed status codes; fixed in `71f66a4`.
 
 ## A.6 Handoff
 
-- Exercise and context: [`docs/handoff.md`](docs/handoff.md).
-- **Limitation:** no second engineer has run it. The 408 part was demonstrated by the AI agent, not a human ([`results/handoff_demo.diff`](results/handoff_demo.diff)).
-- Human run: [HANDOFF_RESULT — fill in: who ran it (me or another engineer), time taken, what was unclear. If only I ran it, say so.]
+- Exercise and context: [`docs/handoff.md`](https://github.com/assad-ua/lead-intake-quest/blob/main/docs/handoff.md).
+- **Limitation:** no second engineer has run it. The 408 part was first demonstrated by the AI agent ([`results/handoff_demo.diff`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/handoff_demo.diff)).
+- **Human run:** performed by me (Ussama Assad), not a second engineer, on 2026-10-05. Took about 7 minutes (19:17–19:24). Result: 16 tests passed; `crm_down_500` went to 4 requests / 1.4 s as expected. Friction: my edit to `retry_statuses` broke the class twice — first a missing `= ` (dataclass error: non-default argument follows default argument), then wrong indentation. Both errors appear at import time and are not obvious to read; I used Claude to diagnose them. Suggested improvement: a clearer example of the edit in `docs/handoff.md`, or a `__post_init__` check in `RetryPolicy` with a plain error message. Changes were reverted afterwards; the exercise is not part of the submitted code.
 
 ## A.7 Limitations
 

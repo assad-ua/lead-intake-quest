@@ -8,7 +8,7 @@ The flow mirrors the lead-generation and CRM automation systems I build for clie
 
 ## Problems considered
 
-All numbers below come from `python scripts/measure.py baseline` → [`results/baseline.json`](results/baseline.json). They are measured on the fake CRM, on one machine, with synthetic inputs. The 200-lead batch uses a fault mix I chose (80% ok, 8% timeout after the CRM saved the record, 5% timeout before save, 4% two 500s, 3% permanent 400). Those rates are assumptions, not observed data.
+All numbers below come from `python scripts/measure.py baseline` → [`results/baseline.json`](https://github.com/assad-ua/lead-intake-quest/blob/main/results/baseline.json). They are measured on the fake CRM, on one machine, with synthetic inputs. The 200-lead batch uses a fault mix I chose (80% ok, 8% timeout after the CRM saved the record, 5% timeout before save, 4% two 500s, 3% permanent 400). Those rates are assumptions, not observed data.
 
 | # | Problem | Where | Baseline evidence (measured, synthetic) |
 |---|---|---|---|

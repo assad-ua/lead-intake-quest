@@ -48,31 +48,6 @@ index 0eeca61..2f2a804 100644
          for attempt in range(1, self.policy.max_attempts + 1):
              try:
                  return self.transport.post("/contacts", json=payload, headers=headers)
-diff --git a/app/fake_crm.py b/app/fake_crm.py
-index 01a0657..777530f 100644
---- a/app/fake_crm.py
-+++ b/app/fake_crm.py
-@@ -9,9 +9,8 @@ Outcomes:
-   "timeout_before_commit" raise CRMTimeout, nothing stored
-   "timeout_after_commit"  store the contact, then raise CRMTimeout
-                           (the response was lost on the way back)
--  "500" / "503"           raise CRMHTTPError, nothing stored
--  "429"                   raise CRMHTTPError(429), nothing stored
--  "400"                   raise CRMHTTPError(400) - permanent rejection
-+  any HTTP status, e.g.   raise CRMHTTPError(<status>), nothing stored
-+  "400", "429", "500"     (the client decides which ones are retryable)
- When the script runs out, the last outcome repeats.
- 
- Idempotency: if a request carries an `Idempotency-Key` header that was
-@@ -55,7 +54,7 @@ class FakeCRM:
-             raise CRMTimeout("read timeout")
-         if outcome == "timeout_before_commit":
-             raise CRMTimeout("connect timeout")
--        if outcome in {"400", "429", "500", "503"}:
-+        if outcome.isdigit():
-             raise CRMHTTPError(int(outcome))
-         raise ValueError(f"unknown outcome {outcome!r}")
- 
 diff --git a/app/main.py b/app/main.py
 index 89bd197..d533b51 100644
 --- a/app/main.py
@@ -93,3 +68,106 @@ index 89bd197..d533b51 100644
          except CRMError:
              raise HTTPException(status_code=502, detail="Could not save lead to CRM")
          return {"crm_id": contact["id"], "score": score, "route": route}
+diff --git a/tests/test_crm_retry.py b/tests/test_crm_retry.py
+index b5d51a3..614fab8 100644
+--- a/tests/test_crm_retry.py
++++ b/tests/test_crm_retry.py
+@@ -11,6 +11,7 @@ from app.fake_crm import FakeCRM
+ from app.main import create_app
+ 
+ PAYLOAD = {"name": "A", "email": "a@example.com"}
++KEY = "submission-1"
+ 
+ 
+ class Sleeps(list):
+@@ -25,7 +26,7 @@ def client(script):
+ 
+ def test_timeout_after_commit_does_not_duplicate():
+     c, crm, _ = client(["timeout_after_commit", "ok"])
+-    c.push_lead(PAYLOAD)
++    c.push_lead(PAYLOAD, KEY)
+     assert crm.requests == 2
+     assert len(crm.contacts_for("a@example.com")) == 1
+ 
+@@ -33,7 +34,7 @@ def test_timeout_after_commit_does_not_duplicate():
+ def test_permanent_400_fails_fast_without_sleeping():
+     c, crm, sleeps = client(["400"])
+     with pytest.raises(CRMError) as err:
+-        c.push_lead(PAYLOAD)
++        c.push_lead(PAYLOAD, KEY)
+     assert crm.requests == 1
+     assert sleeps == []
+     assert err.value.__cause__.status == 400
+@@ -42,15 +43,15 @@ def test_permanent_400_fails_fast_without_sleeping():
+ def test_crm_down_stops_after_max_attempts_with_backoff():
+     c, crm, sleeps = client(["500"])
+     with pytest.raises(CRMError):
+-        c.push_lead(PAYLOAD)
++        c.push_lead(PAYLOAD, KEY)
+     assert crm.requests == 3
+     assert sleeps == pytest.approx([0.2, 0.4])
+ 
+ 
+-@pytest.mark.parametrize("first", ["429", "503", "timeout_before_commit"])
++@pytest.mark.parametrize("first", ["500", "503", "timeout_before_commit"])
+ def test_transient_error_then_ok_recovers(first):
+     c, crm, sleeps = client([first, "ok"])
+-    assert c.push_lead(PAYLOAD)["email"] == "a@example.com"
++    assert c.push_lead(PAYLOAD, KEY)["email"] == "a@example.com"
+     assert crm.requests == 2
+     assert sleeps == pytest.approx([0.2])
+ 
+@@ -63,15 +64,41 @@ def test_same_key_on_every_attempt():
+             seen.append(headers["Idempotency-Key"])
+             return super().post(path, json, headers)
+ 
+-    CRMClient(Recorder(["500", "500", "ok"]), sleep=lambda s: None).push_lead(PAYLOAD)
++    CRMClient(Recorder(["500", "500", "ok"]), sleep=lambda s: None).push_lead(PAYLOAD, KEY)
+     assert len(seen) == 3 and len(set(seen)) == 1
+ 
+ 
+ def test_separate_submissions_get_separate_keys():
+     crm = FakeCRM(["ok"])
+     c = CRMClient(crm, sleep=lambda s: None)
+-    c.push_lead(PAYLOAD)
+-    c.push_lead(PAYLOAD)
++    c.push_lead(PAYLOAD, "submission-1")
++    c.push_lead(PAYLOAD, "submission-2")
++    assert len(crm.contacts) == 2
++
++
++def test_rate_limit_429_fails_fast():
++    # Reviewer decision R1: do not retry 429 inside the request.
++    c, crm, sleeps = client(["429", "ok"])
++    with pytest.raises(CRMError):
++        c.push_lead(PAYLOAD, KEY)
++    assert crm.requests == 1
++    assert sleeps == []
++
++
++def test_key_is_required():
++    # Reviewer decision R2: no silent key generation.
++    c, _, _ = client(["ok"])
++    with pytest.raises(TypeError):
++        c.push_lead(PAYLOAD)
++    with pytest.raises(ValueError):
++        c.push_lead(PAYLOAD, "")
++
++
++def test_api_sends_a_different_key_per_submission():
++    crm = FakeCRM(["ok"])
++    api = TestClient(create_app(CRMClient(crm, sleep=lambda s: None)))
++    api.post("/leads", json=PAYLOAD)
++    api.post("/leads", json=PAYLOAD)
+     assert len(crm.contacts) == 2
+ 
+ 
+@@ -81,7 +108,7 @@ def test_policy_is_configurable():
+     crm, sleeps = FakeCRM(["500"]), Sleeps()
+     c = CRMClient(crm, sleep=sleeps, policy=RetryPolicy(max_attempts=5, base_delay_s=0.1))
+     with pytest.raises(CRMError):
+-        c.push_lead(PAYLOAD)
++        c.push_lead(PAYLOAD, KEY)
+     assert crm.requests == 5
+     assert sleeps == pytest.approx([0.1, 0.2, 0.4, 0.8])
+ 

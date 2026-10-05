@@ -7,42 +7,42 @@
       "crm_requests": 1,
       "contacts_created": 1,
       "simulated_wait_s": 0.0,
-      "wall_ms": 29.1
+      "wall_ms": 27.2
     },
     "transient_timeout_then_ok": {
       "http_status": 201,
       "crm_requests": 2,
       "contacts_created": 1,
       "simulated_wait_s": 0.2,
-      "wall_ms": 2.9
+      "wall_ms": 3.1
     },
     "timeout_after_commit_then_ok": {
       "http_status": 201,
       "crm_requests": 2,
       "contacts_created": 1,
       "simulated_wait_s": 0.2,
-      "wall_ms": 3.0
+      "wall_ms": 3.3
     },
     "rate_limited_then_ok": {
       "http_status": 201,
       "crm_requests": 2,
       "contacts_created": 1,
       "simulated_wait_s": 0.2,
-      "wall_ms": 2.6
+      "wall_ms": 2.7
     },
     "crm_rejects_400": {
       "http_status": 502,
       "crm_requests": 1,
       "contacts_created": 0,
       "simulated_wait_s": 0.0,
-      "wall_ms": 3.3
+      "wall_ms": 3.2
     },
     "crm_down_500": {
       "http_status": 502,
       "crm_requests": 3,
       "contacts_created": 0,
       "simulated_wait_s": 0.6,
-      "wall_ms": 2.9
+      "wall_ms": 3.0
     }
   },
   "batch_200_synthetic": {

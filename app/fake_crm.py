@@ -9,9 +9,8 @@ Outcomes:
   "timeout_before_commit" raise CRMTimeout, nothing stored
   "timeout_after_commit"  store the contact, then raise CRMTimeout
                           (the response was lost on the way back)
-  "500" / "503"           raise CRMHTTPError, nothing stored
-  "429"                   raise CRMHTTPError(429), nothing stored
-  "400"                   raise CRMHTTPError(400) - permanent rejection
+  any HTTP status, e.g.   raise CRMHTTPError(<status>), nothing stored
+  "400", "429", "500"     (the client decides which ones are retryable)
 When the script runs out, the last outcome repeats.
 
 Idempotency: if a request carries an `Idempotency-Key` header that was
@@ -55,7 +54,7 @@ class FakeCRM:
             raise CRMTimeout("read timeout")
         if outcome == "timeout_before_commit":
             raise CRMTimeout("connect timeout")
-        if outcome in {"400", "429", "500", "503"}:
+        if outcome.isdigit():
             raise CRMHTTPError(int(outcome))
         raise ValueError(f"unknown outcome {outcome!r}")
 

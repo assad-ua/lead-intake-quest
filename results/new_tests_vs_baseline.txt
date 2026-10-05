@@ -1,0 +1,15 @@
+E         comparison failed. Mismatched elements: 1 / 1:
+E         comparison failed. Mismatched elements: 1 / 1:
+E         comparison failed. Mismatched elements: 1 / 1:
+>       raise CRMError("CRM push failed after retries")
+E       app.crm_client.CRMError: CRM push failed after retries
+FAILED tests/test_crm_retry.py::test_timeout_after_commit_does_not_duplicate
+FAILED tests/test_crm_retry.py::test_permanent_400_fails_fast_without_sleeping
+FAILED tests/test_crm_retry.py::test_crm_down_stops_after_max_attempts_with_backoff
+FAILED tests/test_crm_retry.py::test_transient_error_then_ok_recovers[429] - ...
+FAILED tests/test_crm_retry.py::test_transient_error_then_ok_recovers[503] - ...
+FAILED tests/test_crm_retry.py::test_transient_error_then_ok_recovers[timeout_before_commit]
+FAILED tests/test_crm_retry.py::test_same_key_on_every_attempt - app.crm_clie...
+FAILED tests/test_crm_retry.py::test_policy_is_configurable - ImportError: ca...
+FAILED tests/test_crm_retry.py::test_api_returns_one_contact_when_response_is_lost
+9 failed, 1 passed in 0.35s

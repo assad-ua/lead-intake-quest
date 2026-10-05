@@ -1,0 +1,64 @@
+{
+  "label": "baseline",
+  "note": "SYNTHETIC fake CRM, single local run; see scripts/measure.py",
+  "scenarios": {
+    "healthy": {
+      "http_status": 201,
+      "crm_requests": 1,
+      "contacts_created": 1,
+      "simulated_wait_s": 0.0,
+      "wall_ms": 34.7
+    },
+    "transient_timeout_then_ok": {
+      "http_status": 201,
+      "crm_requests": 2,
+      "contacts_created": 1,
+      "simulated_wait_s": 0.5,
+      "wall_ms": 3.3
+    },
+    "timeout_after_commit_then_ok": {
+      "http_status": 201,
+      "crm_requests": 2,
+      "contacts_created": 2,
+      "simulated_wait_s": 0.5,
+      "wall_ms": 2.6
+    },
+    "rate_limited_then_ok": {
+      "http_status": 201,
+      "crm_requests": 2,
+      "contacts_created": 1,
+      "simulated_wait_s": 0.5,
+      "wall_ms": 2.4
+    },
+    "crm_rejects_400": {
+      "http_status": 502,
+      "crm_requests": 8,
+      "contacts_created": 0,
+      "simulated_wait_s": 4.0,
+      "wall_ms": 2.4
+    },
+    "crm_down_500": {
+      "http_status": 502,
+      "crm_requests": 8,
+      "contacts_created": 0,
+      "simulated_wait_s": 4.0,
+      "wall_ms": 2.5
+    }
+  },
+  "batch_200_synthetic": {
+    "leads": 200,
+    "crm_requests": 295,
+    "duplicate_contacts": 20,
+    "failed_submissions": 8,
+    "simulated_wait_s": 51.5,
+    "crm_requests_per_lead": 1.475
+  },
+  "scoring_drift": {
+    "inputs": 24,
+    "score_mismatches": 16
+  },
+  "validation_gaps": {
+    "invalid_inputs": 5,
+    "accepted": 5
+  }
+}

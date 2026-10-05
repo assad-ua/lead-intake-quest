@@ -135,4 +135,4 @@ Unchanged on purpose (non-goals): scoring drift 16/24 inputs; invalid emails acc
 - Fault rates in the batch are assumptions, not observed data. No team-wide or production impact is claimed.
 - Leads that fail after all retries (outage, 429, 400) are lost with a 502. A queue/outbox is the follow-up.
 - DEFECT-2 and DEFECT-3 remain.
-- Actual effort: [EFFORT — fill in your real hours].
+- Actual effort: Performed by me (Ussama Assad), not a second engineer, on 2026-10-05. Took about 7 minutes (19:17–19:24). Result: 16 tests passed; `crm_down_500` went to 4 requests / 1.4 s as expected. Friction: my edit to `retry_statuses` broke the class twice — first a missing `= ` (dataclass error: non-default argument), then wrong indentation. Both errors came from Python at import time and were not obvious to read; I used Claude to diagnose them. Suggested improvement: add a `__post_init__` check in `RetryPolicy` with a clear message, or a short "edit carefully" example in `docs/handoff.md`. Changes were reverted afterwards; the exercise is not part of the submitted code.

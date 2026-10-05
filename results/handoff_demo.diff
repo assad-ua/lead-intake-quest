@@ -1,0 +1,27 @@
+diff --git a/app/crm_client.py b/app/crm_client.py
+index 0eeca61..b46226e 100644
+--- a/app/crm_client.py
++++ b/app/crm_client.py
+@@ -27,7 +27,7 @@ class RetryPolicy:
+ 
+     max_attempts: int = 3
+     base_delay_s: float = 0.2
+-    retry_statuses: frozenset = frozenset({429, *range(500, 600)})
++    retry_statuses: frozenset = frozenset({408, 429, *range(500, 600)})
+ 
+     def is_transient(self, exc: Exception) -> bool:
+         if isinstance(exc, CRMTimeout):
+diff --git a/tests/test_crm_retry.py b/tests/test_crm_retry.py
+index b5d51a3..a580690 100644
+--- a/tests/test_crm_retry.py
++++ b/tests/test_crm_retry.py
+@@ -92,3 +92,9 @@ def test_api_returns_one_contact_when_response_is_lost():
+     resp = api.post("/leads", json=PAYLOAD)
+     assert resp.status_code == 201
+     assert len(crm.contacts_for("a@example.com")) == 1
++
++
++def test_408_is_retried():
++    c, crm, _ = client(["408", "ok"])
++    c.push_lead(PAYLOAD)
++    assert crm.requests == 2

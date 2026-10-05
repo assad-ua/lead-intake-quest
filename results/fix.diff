@@ -1,0 +1,79 @@
+diff --git a/app/crm_client.py b/app/crm_client.py
+index a8d1fbe..0eeca61 100644
+--- a/app/crm_client.py
++++ b/app/crm_client.py
+@@ -1,4 +1,6 @@
+ import time
++import uuid
++from dataclasses import dataclass
+ 
+ 
+ class CRMError(Exception):
+@@ -15,6 +17,30 @@ class CRMHTTPError(Exception):
+         self.status = status
+ 
+ 
++@dataclass(frozen=True)
++class RetryPolicy:
++    """When and how often to retry a CRM write. Change retries here only.
++
++    Worst-case wait = sum(base_delay_s * 2**i for i in range(max_attempts - 1)).
++    Defaults: 3 attempts, waits 0.2 s then 0.4 s (0.6 s total).
++    """
++
++    max_attempts: int = 3
++    base_delay_s: float = 0.2
++    retry_statuses: frozenset = frozenset({429, *range(500, 600)})
++
++    def is_transient(self, exc: Exception) -> bool:
++        if isinstance(exc, CRMTimeout):
++            return True
++        if isinstance(exc, CRMHTTPError):
++            return exc.status in self.retry_statuses
++        return False
++
++    def delay_before_retry(self, attempt: int) -> float:
++        """Delay after failed attempt number `attempt` (1-based)."""
++        return self.base_delay_s * 2 ** (attempt - 1)
++
++
+ class CRMClient:
+     """Thin client for the CRM 'create contact' endpoint.
+ 
+@@ -22,19 +48,24 @@ class CRMClient:
+     raises CRMTimeout or CRMHTTPError on failure (see app/fake_crm.py).
+     """
+ 
+-    def __init__(self, transport, sleep=time.sleep):
++    def __init__(self, transport, sleep=time.sleep, policy: RetryPolicy = RetryPolicy()):
+         self.transport = transport
+         self.sleep = sleep
++        self.policy = policy
++
++    def push_lead(self, payload: dict, idempotency_key: str | None = None) -> dict:
++        """Create the contact, retrying transient failures only.
+ 
+-    def push_lead(self, payload: dict) -> dict:
+-        # DEFECT-1 (deliberate, labelled for the Quest): unreliable retries.
+-        #  - retries on EVERY error, including permanent 4xx rejections
+-        #  - 8 attempts with a fixed 0.5 s sleep, no backoff
+-        #  - no idempotency key, so a timeout that happens AFTER the CRM
+-        #    created the contact makes the retry create a duplicate
+-        for attempt in range(8):
++        The same Idempotency-Key is sent on every attempt, so a retry after
++        a lost response returns the existing contact instead of a duplicate.
++        Pass your own key if the caller may retry at a higher level.
++        """
++        headers = {"Idempotency-Key": idempotency_key or str(uuid.uuid4())}
++        for attempt in range(1, self.policy.max_attempts + 1):
+             try:
+-                return self.transport.post("/contacts", json=payload, headers={})
+-            except Exception:
+-                self.sleep(0.5)
+-        raise CRMError("CRM push failed after retries")
++                return self.transport.post("/contacts", json=payload, headers=headers)
++            except (CRMTimeout, CRMHTTPError) as exc:
++                last_attempt = attempt == self.policy.max_attempts
++                if not self.policy.is_transient(exc) or last_attempt:
++                    raise CRMError(f"CRM push failed on attempt {attempt}: {exc}") from exc
++                self.sleep(self.policy.delay_before_retry(attempt))

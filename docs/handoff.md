@@ -5,7 +5,8 @@
 - One flow: `POST /leads` (`app/main.py`) → `CRMClient.push_lead()` (`app/crm_client.py`) → CRM.
 - The CRM is fake and in-process: `app/fake_crm.py`. You drive it with a list of outcomes, e.g. `FakeCRM(["timeout_after_commit", "ok"])` or any HTTP status as a string (`"408"`).
 - **All retry behaviour lives in `RetryPolicy`** (attempts, backoff, which statuses retry). Change it there, nowhere else.
-- Every attempt for one submission carries the same `Idempotency-Key`. Do not generate the key inside the retry loop.
+- `push_lead(payload, idempotency_key)` — the key is required and must be the same for every attempt of one submission. `main.py` creates one per request.
+- 429 is deliberately not retried (review decision R1).
 - `DEFECT-2` (duplicated scoring in `main.py`) and `DEFECT-3` (no email validation) are known and deliberately left in place.
 
 ## Setup and checks
@@ -34,5 +35,5 @@ Compare `results/mine.json` with `results/after.json`. Only `wall_ms` should dif
 
 No second engineer has done this exercise yet. What exists:
 
-- **Demonstrated by the AI agent (Claude), not a human:** the 408 part (steps 1–2) on a throwaway branch. First attempt failed: the fake CRM only accepted a fixed list of status codes, so step 2 needed an edit to the fake as well. Fixed in commit `71f66a4` (fake now accepts any numeric status). Second attempt: 1 source line + 1 test, 13 tests passed. The diff is in `results/handoff_demo.diff`.
+- **Demonstrated by the AI agent (Claude), not a human:** the 408 part (steps 1–2) on a throwaway branch. First attempt failed: the fake CRM only accepted a fixed list of status codes, so step 2 needed an edit to the fake as well. Fixed in commit `71f66a4` (fake now accepts any numeric status). Second attempt: 1 source line + 1 test, 13 tests passed. The diff is in `results/handoff_demo.diff` (made at commit `71f66a4`, before the review corrections, so the `retry_statuses` line in it still shows 429).
 - **Human run:** see the "Handoff" row in `directive.md` → Results appendix.

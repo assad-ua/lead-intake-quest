@@ -1,5 +1,4 @@
 import time
-import uuid
 from dataclasses import dataclass
 
 
@@ -23,11 +22,14 @@ class RetryPolicy:
 
     Worst-case wait = sum(base_delay_s * 2**i for i in range(max_attempts - 1)).
     Defaults: 3 attempts, waits 0.2 s then 0.4 s (0.6 s total).
+    Retries: timeouts and 5xx. Everything else fails on the first attempt.
     """
 
     max_attempts: int = 3
     base_delay_s: float = 0.2
-    retry_statuses: frozenset = frozenset({429, *range(500, 600)})
+    # 429 is NOT retried here: rate limits reset over seconds, so short
+    # in-request retries only burn quota (review finding R1).
+    retry_statuses: frozenset = frozenset(range(500, 600))
 
     def is_transient(self, exc: Exception) -> bool:
         if isinstance(exc, CRMTimeout):
@@ -53,14 +55,18 @@ class CRMClient:
         self.sleep = sleep
         self.policy = policy
 
-    def push_lead(self, payload: dict, idempotency_key: str | None = None) -> dict:
+    def push_lead(self, payload: dict, idempotency_key: str) -> dict:
         """Create the contact, retrying transient failures only.
 
-        The same Idempotency-Key is sent on every attempt, so a retry after
-        a lost response returns the existing contact instead of a duplicate.
-        Pass your own key if the caller may retry at a higher level.
+        `idempotency_key` identifies ONE submission. It is sent unchanged on
+        every attempt, so a retry after a lost response returns the existing
+        contact instead of a duplicate. It is required on purpose: any caller
+        that retries at a higher level (e.g. a queue) must reuse the same key
+        (review finding R2).
         """
-        headers = {"Idempotency-Key": idempotency_key or str(uuid.uuid4())}
+        if not idempotency_key:
+            raise ValueError("idempotency_key is required")
+        headers = {"Idempotency-Key": idempotency_key}
         for attempt in range(1, self.policy.max_attempts + 1):
             try:
                 return self.transport.post("/contacts", json=payload, headers=headers)

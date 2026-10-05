@@ -1,3 +1,6 @@
+# Output of tests/test_crm_retry.py as written in commit e168641 (agent version),
+# run against the baseline app/crm_client.py from fa8883f. 9 of 10 fail on behaviour.
+# The 1 that passes (separate submissions -> separate contacts) is a guard, expected to pass on both.
 E         comparison failed. Mismatched elements: 1 / 1:
 E         comparison failed. Mismatched elements: 1 / 1:
 E         comparison failed. Mismatched elements: 1 / 1:

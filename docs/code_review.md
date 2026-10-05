@@ -28,4 +28,10 @@ Risk: if someone later adds a retry at a higher level (a queue worker calling `p
 
 ## Reviewer decision
 
-<!-- ASSAD: fill this in yourself after reading the diff. Record what you actually decided. -->
+Both findings were raised by the agent in its self-review. The decisions below are mine (Assad), made after reading `results/fix.diff`.
+
+**R1 — rejected the agent's 429 handling.** 429 removed from `retry_statuses`; a rate-limited write now fails on the first attempt. I did not take the alternative of reading `Retry-After`: it needs the transport to expose headers, new fake behaviour and more tests, and waiting several seconds inside a form request is the wrong place anyway. Accepted cost: a short rate limit now returns 502 where the baseline happened to succeed (see `results/after.json`, `rate_limited_then_ok`). Follow-up: queue/outbox.
+
+**R2 — corrected.** `idempotency_key` is now a required argument; `main.py` creates one UUID per request. Tests added: `test_key_is_required`, `test_api_sends_a_different_key_per_submission`.
+
+Result after corrections: 15 tests pass; re-measured into `results/after.json`. Commit: see `git log` ("Review corrections").

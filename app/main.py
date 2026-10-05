@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import FastAPI, HTTPException
 
 from app.crm_client import CRMClient, CRMError
@@ -29,7 +31,8 @@ def create_app(crm_client: CRMClient | None = None) -> FastAPI:
         route = "sales" if score_lead(lead) >= 50 else "nurture"
         payload = {**lead.model_dump(), "score": score, "route": route}
         try:
-            contact = client.push_lead(payload)
+            # One key per form submission, reused by every retry attempt.
+            contact = client.push_lead(payload, idempotency_key=str(uuid.uuid4()))
         except CRMError:
             raise HTTPException(status_code=502, detail="Could not save lead to CRM")
         return {"crm_id": contact["id"], "score": score, "route": route}

@@ -9,9 +9,9 @@
 
 ## Decision
 
-1. Retry only transient failures: timeouts, 429, 5xx. Fail on the first attempt for other 4xx.
+1. Retry only transient failures: timeouts and 5xx. Fail on the first attempt for any 4xx, **including 429** (changed in review, R1).
 2. Cap at 3 attempts, exponential backoff 0.2 s → 0.4 s (0.6 s worst case).
-3. Send one `Idempotency-Key` per submission, reused on every attempt.
+3. Send one `Idempotency-Key` per submission, reused on every attempt. The key is a **required** argument, created per request in `main.py` (changed in review, R2).
 4. Keep all of this in a frozen `RetryPolicy` dataclass injected into `CRMClient`.
 
 ## Alternatives considered
@@ -29,5 +29,6 @@
 
 - **Relies on the CRM honouring `Idempotency-Key`.** The fake does. A real CRM must be checked; if it doesn't, duplicates come back and the email-lookup alternative is needed.
 - **Fewer attempts means some long outages now fail sooner** (3 attempts / 0.6 s instead of 8 / 4.0 s). Neither version survives a multi-second outage; only a queue would.
-- **429 uses the same short backoff as 5xx** and does not read `Retry-After`. See review finding R1.
+- **429 now fails immediately (R1).** In the synthetic `rate_limited_then_ok` scenario the baseline succeeded after one 0.5 s retry; the new code returns 502. Chosen because short retries against a real rate limit mostly burn quota, and the right handling (wait for `Retry-After`, or queue) is a separate change. This is a real regression for brief rate limits until a queue exists.
+- **Callers must pass a key (R2).** Slightly more code at the call site; in exchange nobody can add a higher-level retry without seeing the key.
 - **Permanent 4xx still returns HTTP 502** to the form. Unchanged behaviour; the user cannot tell their input was the problem. Tied to DEFECT-3 (validation), out of scope.

@@ -1,0 +1,95 @@
+diff --git a/app/crm_client.py b/app/crm_client.py
+index 0eeca61..2f2a804 100644
+--- a/app/crm_client.py
++++ b/app/crm_client.py
+@@ -1,5 +1,4 @@
+ import time
+-import uuid
+ from dataclasses import dataclass
+ 
+ 
+@@ -23,11 +22,14 @@ class RetryPolicy:
+ 
+     Worst-case wait = sum(base_delay_s * 2**i for i in range(max_attempts - 1)).
+     Defaults: 3 attempts, waits 0.2 s then 0.4 s (0.6 s total).
++    Retries: timeouts and 5xx. Everything else fails on the first attempt.
+     """
+ 
+     max_attempts: int = 3
+     base_delay_s: float = 0.2
+-    retry_statuses: frozenset = frozenset({429, *range(500, 600)})
++    # 429 is NOT retried here: rate limits reset over seconds, so short
++    # in-request retries only burn quota (review finding R1).
++    retry_statuses: frozenset = frozenset(range(500, 600))
+ 
+     def is_transient(self, exc: Exception) -> bool:
+         if isinstance(exc, CRMTimeout):
+@@ -53,14 +55,18 @@ class CRMClient:
+         self.sleep = sleep
+         self.policy = policy
+ 
+-    def push_lead(self, payload: dict, idempotency_key: str | None = None) -> dict:
++    def push_lead(self, payload: dict, idempotency_key: str) -> dict:
+         """Create the contact, retrying transient failures only.
+ 
+-        The same Idempotency-Key is sent on every attempt, so a retry after
+-        a lost response returns the existing contact instead of a duplicate.
+-        Pass your own key if the caller may retry at a higher level.
++        `idempotency_key` identifies ONE submission. It is sent unchanged on
++        every attempt, so a retry after a lost response returns the existing
++        contact instead of a duplicate. It is required on purpose: any caller
++        that retries at a higher level (e.g. a queue) must reuse the same key
++        (review finding R2).
+         """
+-        headers = {"Idempotency-Key": idempotency_key or str(uuid.uuid4())}
++        if not idempotency_key:
++            raise ValueError("idempotency_key is required")
++        headers = {"Idempotency-Key": idempotency_key}
+         for attempt in range(1, self.policy.max_attempts + 1):
+             try:
+                 return self.transport.post("/contacts", json=payload, headers=headers)
+diff --git a/app/fake_crm.py b/app/fake_crm.py
+index 01a0657..777530f 100644
+--- a/app/fake_crm.py
++++ b/app/fake_crm.py
+@@ -9,9 +9,8 @@ Outcomes:
+   "timeout_before_commit" raise CRMTimeout, nothing stored
+   "timeout_after_commit"  store the contact, then raise CRMTimeout
+                           (the response was lost on the way back)
+-  "500" / "503"           raise CRMHTTPError, nothing stored
+-  "429"                   raise CRMHTTPError(429), nothing stored
+-  "400"                   raise CRMHTTPError(400) - permanent rejection
++  any HTTP status, e.g.   raise CRMHTTPError(<status>), nothing stored
++  "400", "429", "500"     (the client decides which ones are retryable)
+ When the script runs out, the last outcome repeats.
+ 
+ Idempotency: if a request carries an `Idempotency-Key` header that was
+@@ -55,7 +54,7 @@ class FakeCRM:
+             raise CRMTimeout("read timeout")
+         if outcome == "timeout_before_commit":
+             raise CRMTimeout("connect timeout")
+-        if outcome in {"400", "429", "500", "503"}:
++        if outcome.isdigit():
+             raise CRMHTTPError(int(outcome))
+         raise ValueError(f"unknown outcome {outcome!r}")
+ 
+diff --git a/app/main.py b/app/main.py
+index 89bd197..d533b51 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,3 +1,5 @@
++import uuid
++
+ from fastapi import FastAPI, HTTPException
+ 
+ from app.crm_client import CRMClient, CRMError
+@@ -29,7 +31,8 @@ def create_app(crm_client: CRMClient | None = None) -> FastAPI:
+         route = "sales" if score_lead(lead) >= 50 else "nurture"
+         payload = {**lead.model_dump(), "score": score, "route": route}
+         try:
+-            contact = client.push_lead(payload)
++            # One key per form submission, reused by every retry attempt.
++            contact = client.push_lead(payload, idempotency_key=str(uuid.uuid4()))
+         except CRMError:
+             raise HTTPException(status_code=502, detail="Could not save lead to CRM")
+         return {"crm_id": contact["id"], "score": score, "route": route}
